@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+export type Role = "admin" | "user";
 export interface User {
   id: string;
   name: string;
   email: string;
+  role: Role;
 }
 
 interface AuthContextValue {
@@ -19,6 +21,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 const STORAGE_KEY = "expenseflow.auth";
 
+// Demo: any email containing "admin" gets the admin role.
+function deriveRole(email: string): Role {
+  return /admin/i.test(email) ? "admin" : "user";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -29,6 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
       if (raw) {
         const parsed = JSON.parse(raw);
+        // Backfill role for older stored sessions
+        if (parsed.user && !parsed.user.role) parsed.user.role = deriveRole(parsed.user.email);
         setUser(parsed.user);
         setToken(parsed.token);
       }
@@ -44,13 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, _password: string) => {
     await new Promise((r) => setTimeout(r, 400));
-    const u: User = { id: "u_1", name: email.split("@")[0] || "User", email };
+    const u: User = { id: "u_1", name: email.split("@")[0] || "User", email, role: deriveRole(email) };
     persist(u, "mock.jwt.token");
   };
 
   const register = async (name: string, email: string, _password: string) => {
     await new Promise((r) => setTimeout(r, 500));
-    const u: User = { id: "u_1", name, email };
+    const u: User = { id: "u_1", name, email, role: deriveRole(email) };
     persist(u, "mock.jwt.token");
   };
 
