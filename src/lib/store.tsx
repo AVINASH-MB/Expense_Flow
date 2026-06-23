@@ -1,4 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { apiEnabled } from "@/lib/api";
+import {
+  AdminAPI, BudgetsAPI, GoalsAPI, NotificationsAPI, SettingsAPI, TransactionsAPI,
+} from "@/lib/api-services";
+import { useAuth } from "@/context/auth";
 
 export type TxnType = "income" | "expense";
 export interface Transaction {
@@ -157,6 +163,9 @@ interface StoreContextValue extends StoreData {
 const Ctx = createContext<StoreContextValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { user, token } = useAuth();
+  const useApi = apiEnabled();
+
   const [data, setData] = useState<StoreData>(() => {
     if (typeof window === "undefined") return seed();
     try {
@@ -166,12 +175,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return seed();
   });
 
+  // Persist locally only when running in mock mode
   useEffect(() => {
+    if (useApi) return;
     try { window.localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
-  }, [data]);
+  }, [data, useApi]);
 
-  // Compute alerts whenever data changes
+  // Hydrate from API on login
   useEffect(() => {
+    if (!useApi || !token || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [transactions, budgets, goals, notifications, settings, users] = await Promise.all([
+          TransactionsAPI.list(),
+          BudgetsAPI.list(),
+          GoalsAPI.list(),
+          NotificationsAPI.list(),
+          SettingsAPI.get(),
+          user.role === "admin" ? AdminAPI.listUsers() : Promise.resolve([] as AdminUser[]),
+        ]);
+        if (cancelled) return;
+        setData((d) => ({ ...d, transactions, budgets, goals, notifications, settings, users }));
+      } catch (err: any) {
+        if (!cancelled) toast.error(`Failed to load data: ${err?.response?.data?.error ?? err.message}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [useApi, token, user]);
+
+  // Client-side alert generation (mock mode only — server should do this when API is on)
+  useEffect(() => {
+    if (useApi) return;
     const now = new Date();
     const month = now.getMonth(); const year = now.getFullYear();
     const spentByCat = new Map<string, number>();
@@ -212,28 +247,103 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setData((d) => ({ ...d, notifications: [...newAlerts, ...d.notifications] }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.transactions, data.budgets, data.goals]);
+  }, [data.transactions, data.budgets, data.goals, useApi]);
+
+  /** Run an API call; on error, surface a toast and rethrow so optimistic state can roll back. */
+  const tryApi = async <T,>(fn: () => Promise<T>, label: string): Promise<T | null> => {
+    try { return await fn(); }
+    catch (err: any) {
+      toast.error(`${label} failed: ${err?.response?.data?.error ?? err.message}`);
+      return null;
+    }
+  };
 
   const value = useMemo<StoreContextValue>(() => ({
     ...data,
-    addTransaction: (t) => setData((d) => ({ ...d, transactions: [{ ...t, id: uid() }, ...d.transactions] })),
-    updateTransaction: (id, t) => setData((d) => ({ ...d, transactions: d.transactions.map((x) => x.id === id ? { ...x, ...t } : x) })),
-    deleteTransaction: (id) => setData((d) => ({ ...d, transactions: d.transactions.filter((x) => x.id !== id) })),
-    addBudget: (b) => setData((d) => ({ ...d, budgets: [...d.budgets, { ...b, id: uid() }] })),
-    updateBudget: (id, b) => setData((d) => ({ ...d, budgets: d.budgets.map((x) => x.id === id ? { ...x, ...b } : x) })),
-    deleteBudget: (id) => setData((d) => ({ ...d, budgets: d.budgets.filter((x) => x.id !== id) })),
-    addGoal: (g) => setData((d) => ({ ...d, goals: [...d.goals, { ...g, id: uid() }] })),
-    updateGoal: (id, g) => setData((d) => ({ ...d, goals: d.goals.map((x) => x.id === id ? { ...x, ...g } : x) })),
-    deleteGoal: (id) => setData((d) => ({ ...d, goals: d.goals.filter((x) => x.id !== id) })),
-    markNotificationRead: (id) => setData((d) => ({ ...d, notifications: d.notifications.map((n) => n.id === id ? { ...n, read: true } : n) })),
-    markAllRead: () => setData((d) => ({ ...d, notifications: d.notifications.map((n) => ({ ...n, read: true })) })),
-    deleteNotification: (id) => setData((d) => ({ ...d, notifications: d.notifications.filter((n) => n.id !== id) })),
-    pushNotification: (n) => setData((d) => ({ ...d, notifications: [{ ...n, id: uid(), date: new Date().toISOString(), read: false }, ...d.notifications] })),
-    updateSettings: (s) => setData((d) => ({ ...d, settings: { ...d.settings, ...s } })),
-    updateUser: (id, u) => setData((d) => ({ ...d, users: d.users.map((x) => x.id === id ? { ...x, ...u } : x) })),
-    deleteUser: (id) => setData((d) => ({ ...d, users: d.users.filter((x) => x.id !== id) })),
+    addTransaction: (t) => {
+      const temp: Transaction = { ...t, id: `tmp_${uid()}` };
+      setData((d) => ({ ...d, transactions: [temp, ...d.transactions] }));
+      if (useApi) {
+        tryApi(() => TransactionsAPI.create(t), "Create transaction").then((real) => {
+          if (real) setData((d) => ({ ...d, transactions: d.transactions.map((x) => x.id === temp.id ? real : x) }));
+          else setData((d) => ({ ...d, transactions: d.transactions.filter((x) => x.id !== temp.id) }));
+        });
+      }
+    },
+    updateTransaction: (id, t) => {
+      setData((d) => ({ ...d, transactions: d.transactions.map((x) => x.id === id ? { ...x, ...t } : x) }));
+      if (useApi) tryApi(() => TransactionsAPI.update(id, t), "Update transaction");
+    },
+    deleteTransaction: (id) => {
+      setData((d) => ({ ...d, transactions: d.transactions.filter((x) => x.id !== id) }));
+      if (useApi) tryApi(() => TransactionsAPI.remove(id), "Delete transaction");
+    },
+    addBudget: (b) => {
+      const temp: Budget = { ...b, id: `tmp_${uid()}` };
+      setData((d) => ({ ...d, budgets: [...d.budgets, temp] }));
+      if (useApi) {
+        tryApi(() => BudgetsAPI.create(b), "Create budget").then((real) => {
+          if (real) setData((d) => ({ ...d, budgets: d.budgets.map((x) => x.id === temp.id ? real : x) }));
+          else setData((d) => ({ ...d, budgets: d.budgets.filter((x) => x.id !== temp.id) }));
+        });
+      }
+    },
+    updateBudget: (id, b) => {
+      setData((d) => ({ ...d, budgets: d.budgets.map((x) => x.id === id ? { ...x, ...b } : x) }));
+      if (useApi) tryApi(() => BudgetsAPI.update(id, b), "Update budget");
+    },
+    deleteBudget: (id) => {
+      setData((d) => ({ ...d, budgets: d.budgets.filter((x) => x.id !== id) }));
+      if (useApi) tryApi(() => BudgetsAPI.remove(id), "Delete budget");
+    },
+    addGoal: (g) => {
+      const temp: Goal = { ...g, id: `tmp_${uid()}` };
+      setData((d) => ({ ...d, goals: [...d.goals, temp] }));
+      if (useApi) {
+        tryApi(() => GoalsAPI.create(g), "Create goal").then((real) => {
+          if (real) setData((d) => ({ ...d, goals: d.goals.map((x) => x.id === temp.id ? real : x) }));
+          else setData((d) => ({ ...d, goals: d.goals.filter((x) => x.id !== temp.id) }));
+        });
+      }
+    },
+    updateGoal: (id, g) => {
+      setData((d) => ({ ...d, goals: d.goals.map((x) => x.id === id ? { ...x, ...g } : x) }));
+      if (useApi) tryApi(() => GoalsAPI.update(id, g), "Update goal");
+    },
+    deleteGoal: (id) => {
+      setData((d) => ({ ...d, goals: d.goals.filter((x) => x.id !== id) }));
+      if (useApi) tryApi(() => GoalsAPI.remove(id), "Delete goal");
+    },
+    markNotificationRead: (id) => {
+      setData((d) => ({ ...d, notifications: d.notifications.map((n) => n.id === id ? { ...n, read: true } : n) }));
+      if (useApi) tryApi(() => NotificationsAPI.markRead(id), "Mark read");
+    },
+    markAllRead: () => {
+      setData((d) => ({ ...d, notifications: d.notifications.map((n) => ({ ...n, read: true })) }));
+      if (useApi) tryApi(() => NotificationsAPI.markAllRead(), "Mark all read");
+    },
+    deleteNotification: (id) => {
+      setData((d) => ({ ...d, notifications: d.notifications.filter((n) => n.id !== id) }));
+      if (useApi) tryApi(() => NotificationsAPI.remove(id), "Delete notification");
+    },
+    pushNotification: (n) => {
+      setData((d) => ({ ...d, notifications: [{ ...n, id: uid(), date: new Date().toISOString(), read: false }, ...d.notifications] }));
+      if (useApi) tryApi(() => NotificationsAPI.broadcast(n), "Broadcast notification");
+    },
+    updateSettings: (s) => {
+      setData((d) => ({ ...d, settings: { ...d.settings, ...s } }));
+      if (useApi) tryApi(() => SettingsAPI.update(s), "Update settings");
+    },
+    updateUser: (id, u) => {
+      setData((d) => ({ ...d, users: d.users.map((x) => x.id === id ? { ...x, ...u } : x) }));
+      if (useApi) tryApi(() => AdminAPI.updateUser(id, u), "Update user");
+    },
+    deleteUser: (id) => {
+      setData((d) => ({ ...d, users: d.users.filter((x) => x.id !== id) }));
+      if (useApi) tryApi(() => AdminAPI.deleteUser(id), "Delete user");
+    },
     reseed: () => setData(seed()),
-  }), [data]);
+  }), [data, useApi]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
