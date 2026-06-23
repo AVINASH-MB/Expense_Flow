@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Wallet, Twitter, Github, Linkedin } from "lucide-react";
+import { Wallet, Send, Globe, Mail } from "lucide-react";
 
 export function SiteHeader() {
   return (
@@ -45,9 +45,9 @@ export function SiteFooter() {
             Premium personal finance management for people who care about every dollar.
           </p>
           <div className="mt-4 flex gap-3 text-muted-foreground">
-            <a href="#" aria-label="Twitter" className="hover:text-foreground"><Twitter className="h-4 w-4" /></a>
-            <a href="#" aria-label="GitHub" className="hover:text-foreground"><Github className="h-4 w-4" /></a>
-            <a href="#" aria-label="LinkedIn" className="hover:text-foreground"><Linkedin className="h-4 w-4" /></a>
+            <a href="#" aria-label="Twitter" className="hover:text-foreground"><Send className="h-4 w-4" /></a>
+            <a href="#" aria-label="Website" className="hover:text-foreground"><Globe className="h-4 w-4" /></a>
+            <a href="#" aria-label="Email" className="hover:text-foreground"><Mail className="h-4 w-4" /></a>
           </div>
         </div>
         <div>
