@@ -43,6 +43,13 @@ router.delete("/:id", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.delete("/", async (req, res, next) => {
+  try {
+    const [r] = await pool.query("DELETE FROM notifications WHERE user_id=?", [req.user.id]);
+    res.json({ ok: true, deleted: r.affectedRows });
+  } catch (e) { next(e); }
+});
+
 // Admin broadcast — insert one notification per user
 router.post("/broadcast", requireAdmin, async (req, res, next) => {
   try {

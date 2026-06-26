@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const auth = require("./routes/auth");
 const transactions = require("./routes/transactions");
@@ -11,8 +12,10 @@ const settings = require("./routes/settings");
 const admin = require("./routes/admin");
 
 const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") || true, credentials: false }));
+const origins = process.env.CORS_ORIGIN?.split(",").map((s) => s.trim()).filter(Boolean) || true;
+app.use(cors({ origin: origins, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
@@ -24,7 +27,6 @@ app.use("/api/notifications", notifications);
 app.use("/api/settings", settings);
 app.use("/api/admin", admin);
 
-// Centralized error handler
 app.use((err, _req, res, _next) => {
   console.error(err);
   const status = err.status || 500;

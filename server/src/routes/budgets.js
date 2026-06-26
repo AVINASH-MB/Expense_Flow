@@ -55,4 +55,11 @@ router.delete("/:id", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.delete("/", async (req, res, next) => {
+  try {
+    const [r] = await pool.query("DELETE FROM budgets WHERE user_id=?", [req.user.id]);
+    res.json({ ok: true, deleted: r.affectedRows });
+  } catch (e) { next(e); }
+});
+
 module.exports = router;
