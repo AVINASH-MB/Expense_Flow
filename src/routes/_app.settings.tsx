@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_app/settings")({
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { settings, updateSettings, reseed } = useStore();
+  const { settings, updateSettings, reseed, clearAll } = useStore();
 
   return (
     <div className="space-y-6 animate-fade-up max-w-3xl">
@@ -54,11 +54,23 @@ function SettingsPage() {
 
       <section className="card-glass p-6">
         <h2 className="font-semibold">Data</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Reset all transactions, budgets, goals and notifications to the demo seed.</p>
-        <button
-          onClick={() => { if (confirm("Reset all demo data?")) { reseed(); toast.success("Data reset"); } }}
-          className="mt-4 rounded-lg border border-brand-rose/40 px-4 py-2 text-sm text-brand-rose hover:bg-brand-rose/10"
-        >Reset demo data</button>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Reset restores the demo seed. Clear wipes everything — including the demo data — and won't re-seed on reload.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            onClick={() => { if (confirm("Reset all data to the demo seed?")) { reseed(); toast.success("Demo data restored"); } }}
+            className="rounded-lg border border-white/10 px-4 py-2 text-sm hover:bg-white/5"
+          >Reset to demo</button>
+          <button
+            onClick={async () => {
+              if (!confirm("Delete ALL your transactions, budgets, goals and notifications? This cannot be undone.")) return;
+              await clearAll();
+              toast.success("All data cleared");
+            }}
+            className="rounded-lg border border-brand-rose/40 px-4 py-2 text-sm text-brand-rose hover:bg-brand-rose/10"
+          >Clear all data</button>
+        </div>
       </section>
     </div>
   );

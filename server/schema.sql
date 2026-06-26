@@ -12,6 +12,22 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id          CHAR(36) PRIMARY KEY,
+  user_id     CHAR(36) NOT NULL,
+  token_hash  CHAR(64) NOT NULL UNIQUE,
+  family_id   CHAR(36) NOT NULL,
+  parent_id   CHAR(36) NULL,
+  expires_at  DATETIME NOT NULL,
+  revoked_at  DATETIME NULL,
+  user_agent  VARCHAR(255) NULL,
+  ip          VARCHAR(64) NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_rt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_rt_family (family_id),
+  INDEX idx_rt_user (user_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS transactions (
   id        CHAR(36)       PRIMARY KEY,
   user_id   CHAR(36)       NOT NULL,
@@ -53,7 +69,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   type     ENUM('budget','goal','system') NOT NULL,
   title    VARCHAR(190) NOT NULL,
   message  TEXT         NOT NULL,
-  ref_key  VARCHAR(120) NULL,   -- dedupe key, e.g. "budget:<id>:2026-5"
+  ref_key  VARCHAR(120) NULL,
   `read`   TINYINT(1)   NOT NULL DEFAULT 0,
   created_at TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_n_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
