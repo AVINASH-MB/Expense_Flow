@@ -55,9 +55,6 @@ export const NotificationsAPI = {
   broadcast: (n: { title: string; message: string; type?: "system" | "budget" | "goal" }) =>
     api.post("/api/notifications/broadcast", n).then(() => true),
 };
-  broadcast: (n: { title: string; message: string; type?: "system" | "budget" | "goal" }) =>
-    api.post("/api/notifications/broadcast", n).then(() => true),
-};
 
 export const SettingsAPI = {
   get: () => api.get<NotifySettings>("/api/settings").then((r) => r.data),
