@@ -20,8 +20,6 @@ export const AuthAPI = {
 
 export const TransactionsAPI = {
   list: () => api.get<Transaction[]>("/api/transactions").then((r) => r.data),
-export const TransactionsAPI = {
-  list: () => api.get<Transaction[]>("/api/transactions").then((r) => r.data),
   create: (t: Omit<Transaction, "id">) =>
     api.post<Transaction>("/api/transactions", t).then((r) => r.data),
   update: (id: string, t: Partial<Transaction>) =>
@@ -29,11 +27,14 @@ export const TransactionsAPI = {
   remove: (id: string) => api.delete(`/api/transactions/${id}`).then(() => true),
   clearAll: () => api.delete(`/api/transactions`).then(() => true),
 };
+
+export const BudgetsAPI = {
   list: () => api.get<Budget[]>("/api/budgets").then((r) => r.data),
   create: (b: Omit<Budget, "id">) => api.post<Budget>("/api/budgets", b).then((r) => r.data),
   update: (id: string, b: Partial<Budget>) =>
     api.put<Budget>(`/api/budgets/${id}`, b).then((r) => r.data),
   remove: (id: string) => api.delete(`/api/budgets/${id}`).then(() => true),
+  clearAll: () => api.delete(`/api/budgets`).then(() => true),
 };
 
 export const GoalsAPI = {
@@ -42,6 +43,7 @@ export const GoalsAPI = {
   update: (id: string, g: Partial<Goal>) =>
     api.put<Goal>(`/api/goals/${id}`, g).then((r) => r.data),
   remove: (id: string) => api.delete(`/api/goals/${id}`).then(() => true),
+  clearAll: () => api.delete(`/api/goals`).then(() => true),
 };
 
 export const NotificationsAPI = {
@@ -49,6 +51,10 @@ export const NotificationsAPI = {
   markRead: (id: string) => api.post(`/api/notifications/${id}/read`).then(() => true),
   markAllRead: () => api.post(`/api/notifications/read-all`).then(() => true),
   remove: (id: string) => api.delete(`/api/notifications/${id}`).then(() => true),
+  clearAll: () => api.delete(`/api/notifications`).then(() => true),
+  broadcast: (n: { title: string; message: string; type?: "system" | "budget" | "goal" }) =>
+    api.post("/api/notifications/broadcast", n).then(() => true),
+};
   broadcast: (n: { title: string; message: string; type?: "system" | "budget" | "goal" }) =>
     api.post("/api/notifications/broadcast", n).then(() => true),
 };
