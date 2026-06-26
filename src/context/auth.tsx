@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { apiEnabled, API_BASE } from "@/lib/api";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { apiEnabled, API_BASE, refreshAccessToken } from "@/lib/api";
 import { AuthAPI } from "@/lib/api-services";
 
 export type Role = "admin" | "user";
@@ -27,10 +27,35 @@ function deriveRole(email: string): Role {
   return /admin/i.test(email) ? "admin" : "user";
 }
 
+function decodeJwtExp(token: string): number | null {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof json.exp === "number" ? json.exp * 1000 : null;
+  } catch { return null; }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleProactiveRefresh = (t: string | null) => {
+    if (refreshTimer.current) { clearTimeout(refreshTimer.current); refreshTimer.current = null; }
+    if (!apiEnabled() || !t) return;
+    const exp = decodeJwtExp(t);
+    if (!exp) return;
+    const ms = Math.max(5_000, exp - Date.now() - 60_000);
+    refreshTimer.current = setTimeout(async () => {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        setToken(newToken);
+        scheduleProactiveRefresh(newToken);
+      }
+    }, ms);
+  };
 
   useEffect(() => {
     (async () => {
@@ -42,28 +67,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(parsed.user);
           setToken(parsed.token);
 
-          // If a real API is configured, verify session still valid
           if (apiEnabled() && parsed.token) {
             try {
               const me = await AuthAPI.me();
               setUser(me);
               window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: me, token: parsed.token }));
+              scheduleProactiveRefresh(parsed.token);
             } catch {
-              // invalid → clear
-              window.localStorage.removeItem(STORAGE_KEY);
-              setUser(null); setToken(null);
+              // try silent refresh before giving up
+              const newToken = await refreshAccessToken();
+              if (newToken) {
+                try {
+                  const me = await AuthAPI.me();
+                  setUser(me);
+                  setToken(newToken);
+                  scheduleProactiveRefresh(newToken);
+                } catch {
+                  window.localStorage.removeItem(STORAGE_KEY);
+                  setUser(null); setToken(null);
+                }
+              } else {
+                window.localStorage.removeItem(STORAGE_KEY);
+                setUser(null); setToken(null);
+              }
             }
+          }
+        } else if (apiEnabled()) {
+          // No stored session, but maybe a refresh cookie exists from a previous tab
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            try {
+              const me = await AuthAPI.me();
+              persist(me, newToken);
+              scheduleProactiveRefresh(newToken);
+            } catch {}
           }
         }
       } catch {}
       setLoading(false);
     })();
+    return () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const persist = (u: User, t: string) => {
     setUser(u);
     setToken(t);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: u, token: t }));
+    scheduleProactiveRefresh(t);
   };
 
   const login = async (email: string, password: string) => {
@@ -92,6 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    if (refreshTimer.current) { clearTimeout(refreshTimer.current); refreshTimer.current = null; }
+    if (apiEnabled()) { AuthAPI.logout().catch(() => {}); }
     setUser(null);
     setToken(null);
     window.localStorage.removeItem(STORAGE_KEY);
@@ -110,5 +163,4 @@ export function useAuth() {
   return ctx;
 }
 
-// Re-export for debugging / display
 export const _apiBase = API_BASE;

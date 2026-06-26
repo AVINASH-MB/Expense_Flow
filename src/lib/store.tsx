@@ -59,6 +59,7 @@ export const CATEGORIES = [
 ];
 
 const KEY = "expenseflow.data.v1";
+const SEEDED_KEY = "expenseflow.seeded.v1";
 
 interface StoreData {
   transactions: Transaction[];
@@ -137,6 +138,17 @@ function seed(): StoreData {
     notifications: n,
     settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
     users,
+  };
+}
+
+function emptyData(): StoreData {
+  return {
+    transactions: [],
+    budgets: [],
+    goals: [],
+    notifications: [],
+    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
+    users: [],
   };
 }
 
