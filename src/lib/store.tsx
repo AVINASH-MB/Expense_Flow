@@ -358,7 +358,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setData((d) => ({ ...d, users: d.users.filter((x) => x.id !== id) }));
       if (useApi) tryApi(() => AdminAPI.deleteUser(id), "Delete user");
     },
-    reseed: () => setData(seed()),
+    reseed: () => {
+      try { window.localStorage.removeItem(SEEDED_KEY); } catch {}
+      setData(seed());
+    },
+    clearAll: async () => {
+      setData((d) => ({ ...d, transactions: [], budgets: [], goals: [], notifications: [] }));
+      try { window.localStorage.setItem(SEEDED_KEY, "1"); } catch {}
+      if (useApi) {
+        await Promise.allSettled([
+          TransactionsAPI.clearAll(),
+          BudgetsAPI.clearAll(),
+          GoalsAPI.clearAll(),
+          NotificationsAPI.clearAll(),
+        ]);
+      }
+    },
   }), [data, useApi]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
