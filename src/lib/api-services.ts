@@ -14,8 +14,12 @@ export const AuthAPI = {
   forgot: (email: string) =>
     api.post<{ ok: true }>("/api/auth/forgot-password", { email }).then((r) => r.data),
   me: () => api.get<User & { role: Role }>("/api/auth/me").then((r) => r.data),
+  refresh: () => api.post<AuthResponse>("/api/auth/refresh").then((r) => r.data),
+  logout: () => api.post<{ ok: true }>("/api/auth/logout").then((r) => r.data),
 };
 
+export const TransactionsAPI = {
+  list: () => api.get<Transaction[]>("/api/transactions").then((r) => r.data),
 export const TransactionsAPI = {
   list: () => api.get<Transaction[]>("/api/transactions").then((r) => r.data),
   create: (t: Omit<Transaction, "id">) =>
@@ -23,9 +27,8 @@ export const TransactionsAPI = {
   update: (id: string, t: Partial<Transaction>) =>
     api.put<Transaction>(`/api/transactions/${id}`, t).then((r) => r.data),
   remove: (id: string) => api.delete(`/api/transactions/${id}`).then(() => true),
+  clearAll: () => api.delete(`/api/transactions`).then(() => true),
 };
-
-export const BudgetsAPI = {
   list: () => api.get<Budget[]>("/api/budgets").then((r) => r.data),
   create: (b: Omit<Budget, "id">) => api.post<Budget>("/api/budgets", b).then((r) => r.data),
   update: (id: string, b: Partial<Budget>) =>
