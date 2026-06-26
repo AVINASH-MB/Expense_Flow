@@ -170,6 +170,7 @@ interface StoreContextValue extends StoreData {
   updateUser: (id: string, u: Partial<AdminUser>) => void;
   deleteUser: (id: string) => void;
   reseed: () => void;
+  clearAll: () => Promise<void>;
 }
 
 const Ctx = createContext<StoreContextValue | null>(null);
@@ -183,6 +184,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) return JSON.parse(raw);
+      // Only seed on the very first visit; once cleared, never re-seed.
+      if (window.localStorage.getItem(SEEDED_KEY)) return emptyData();
+      window.localStorage.setItem(SEEDED_KEY, "1");
     } catch {}
     return seed();
   });
