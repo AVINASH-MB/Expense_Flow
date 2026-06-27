@@ -42,6 +42,7 @@ export interface NotifySettings {
   emailGoalAlerts: boolean;
   emailWeeklyDigest: boolean;
   emailProductUpdates: boolean;
+  currency: string;
 }
 export interface AdminUser {
   id: string;
@@ -136,7 +137,7 @@ function seed(): StoreData {
     budgets: b,
     goals: g,
     notifications: n,
-    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
+    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" },
     users,
   };
 }
@@ -147,7 +148,7 @@ function emptyData(): StoreData {
     budgets: [],
     goals: [],
     notifications: [],
-    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
+    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" },
     users: [],
   };
 }
