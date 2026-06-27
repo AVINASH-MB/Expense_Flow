@@ -186,7 +186,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as StoreData;
-        parsed.settings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD", ...(parsed.settings || {}) };
+        const defaults: NotifySettings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" };
+        parsed.settings = { ...defaults, ...(parsed.settings || {}) };
         return parsed;
       }
       // Only seed on the very first visit; once cleared, never re-seed.
