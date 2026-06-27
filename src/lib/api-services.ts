@@ -16,6 +16,8 @@ export const AuthAPI = {
   me: () => api.get<User & { role: Role }>("/api/auth/me").then((r) => r.data),
   refresh: () => api.post<AuthResponse>("/api/auth/refresh").then((r) => r.data),
   logout: () => api.post<{ ok: true }>("/api/auth/logout").then((r) => r.data),
+  deleteAccount: (password?: string) =>
+    api.delete<{ ok: true }>("/api/auth/account", { data: { password } }).then((r) => r.data),
 };
 
 export const TransactionsAPI = {
