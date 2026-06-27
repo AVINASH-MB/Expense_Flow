@@ -4,14 +4,21 @@ const { requireAuth } = require("../middleware/auth");
 
 router.use(requireAuth);
 
+const ALLOWED_CURRENCIES = new Set(["USD","INR","EUR","GBP","AED","SGD","JPY","CAD","AUD"]);
+
 const row = (r) => ({
   emailBudgetAlerts:   Boolean(r.email_budget_alerts),
   emailGoalAlerts:     Boolean(r.email_goal_alerts),
   emailWeeklyDigest:   Boolean(r.email_weekly_digest),
   emailProductUpdates: Boolean(r.email_product_updates),
+  currency:            r.currency || "USD",
 });
 
-const defaults = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false };
+const defaults = {
+  emailBudgetAlerts: true, emailGoalAlerts: true,
+  emailWeeklyDigest: false, emailProductUpdates: false,
+  currency: "USD",
+};
 
 router.get("/", async (req, res, next) => {
   try {
@@ -32,24 +39,26 @@ router.put("/", async (req, res, next) => {
       emailWeeklyDigest: "email_weekly_digest",
       emailProductUpdates: "email_product_updates",
     };
+    // Ensure a row exists first; then apply partial updates.
+    await pool.query(
+      "INSERT INTO settings (user_id) VALUES (?) ON DUPLICATE KEY UPDATE user_id=user_id",
+      [req.user.id],
+    );
+
     const sets = []; const vals = [];
     for (const [k, col] of Object.entries(map)) {
       if (k in req.body) { sets.push(`${col}=?`); vals.push(req.body[k] ? 1 : 0); }
     }
+    if ("currency" in req.body) {
+      const c = String(req.body.currency || "").toUpperCase();
+      if (!ALLOWED_CURRENCIES.has(c)) return res.status(400).json({ error: "Unsupported currency" });
+      sets.push("currency=?"); vals.push(c);
+    }
     if (sets.length) {
       vals.push(req.user.id);
-      await pool.query(
-        `INSERT INTO settings (user_id, ${Object.values(map).join(",")}) VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE ${sets.join(",")}`,
-        [req.user.id,
-          req.body.emailBudgetAlerts ? 1 : 0,
-          req.body.emailGoalAlerts ? 1 : 0,
-          req.body.emailWeeklyDigest ? 1 : 0,
-          req.body.emailProductUpdates ? 1 : 0,
-          ...vals.slice(0, -1),
-        ],
-      );
+      await pool.query(`UPDATE settings SET ${sets.join(",")} WHERE user_id=?`, vals);
     }
+
     const [rows] = await pool.query("SELECT * FROM settings WHERE user_id=?", [req.user.id]);
     res.json(row(rows[0]));
   } catch (e) { next(e); }

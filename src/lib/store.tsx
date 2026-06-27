@@ -42,6 +42,7 @@ export interface NotifySettings {
   emailGoalAlerts: boolean;
   emailWeeklyDigest: boolean;
   emailProductUpdates: boolean;
+  currency: string;
 }
 export interface AdminUser {
   id: string;
@@ -136,7 +137,7 @@ function seed(): StoreData {
     budgets: b,
     goals: g,
     notifications: n,
-    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
+    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" },
     users,
   };
 }
@@ -147,7 +148,7 @@ function emptyData(): StoreData {
     budgets: [],
     goals: [],
     notifications: [],
-    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false },
+    settings: { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" },
     users: [],
   };
 }
@@ -183,7 +184,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return seed();
     try {
       const raw = window.localStorage.getItem(KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw) as StoreData;
+        const defaults: NotifySettings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" };
+        parsed.settings = { ...defaults, ...(parsed.settings || {}) };
+        return parsed;
+      }
       // Only seed on the very first visit; once cleared, never re-seed.
       if (window.localStorage.getItem(SEEDED_KEY)) return emptyData();
       window.localStorage.setItem(SEEDED_KEY, "1");
@@ -196,6 +202,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (useApi) return;
     try { window.localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
   }, [data, useApi]);
+
+  // Keep module-level currency in sync with settings so fmtCurrency() reflects user choice everywhere
+  useEffect(() => {
+    setActiveCurrency(data.settings.currency || "USD");
+  }, [data.settings.currency]);
 
   // Hydrate from API on login
   useEffect(() => {
@@ -386,8 +397,18 @@ export function useStore() {
 }
 
 // Helpers
-export function fmtCurrency(n: number) {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n % 1 === 0 ? 0 : 2 });
+import { findCurrency } from "@/lib/currencies";
+let _activeCurrency = "USD";
+export function setActiveCurrency(code: string) { _activeCurrency = code || "USD"; }
+export function getActiveCurrency() { return _activeCurrency; }
+export function fmtCurrency(n: number, code?: string) {
+  const c = findCurrency(code || _activeCurrency);
+  const decimals = c.code === "JPY" ? 0 : (n % 1 === 0 ? 0 : 2);
+  try {
+    return n.toLocaleString(c.locale, { style: "currency", currency: c.code, maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+  } catch {
+    return `${c.symbol}${n.toLocaleString("en-US", { maximumFractionDigits: decimals })}`;
+  }
 }
 
 export function categorySpend(transactions: Transaction[], month?: number, year?: number) {

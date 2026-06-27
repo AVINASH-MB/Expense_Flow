@@ -170,4 +170,21 @@ router.get("/me", requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.delete("/account", requireAuth, async (req, res, next) => {
+  try {
+    const { password } = req.body || {};
+    const [rows] = await pool.query("SELECT * FROM users WHERE id=?", [req.user.id]);
+    const u = rows[0];
+    if (!u) return res.status(404).json({ error: "Account not found" });
+    if (!password) return res.status(400).json({ error: "Password required" });
+    const ok = await bcrypt.compare(password, u.password_hash);
+    if (!ok) return res.status(401).json({ error: "Incorrect password" });
+
+    // Cascades remove transactions, budgets, goals, notifications, settings, refresh_tokens
+    await pool.query("DELETE FROM users WHERE id=?", [req.user.id]);
+    res.clearCookie(REFRESH_COOKIE, { path: "/api/auth" });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 module.exports = router;
