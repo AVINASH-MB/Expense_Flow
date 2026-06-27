@@ -387,8 +387,18 @@ export function useStore() {
 }
 
 // Helpers
-export function fmtCurrency(n: number) {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n % 1 === 0 ? 0 : 2 });
+import { findCurrency } from "@/lib/currencies";
+let _activeCurrency = "USD";
+export function setActiveCurrency(code: string) { _activeCurrency = code || "USD"; }
+export function getActiveCurrency() { return _activeCurrency; }
+export function fmtCurrency(n: number, code?: string) {
+  const c = findCurrency(code || _activeCurrency);
+  const decimals = c.code === "JPY" ? 0 : (n % 1 === 0 ? 0 : 2);
+  try {
+    return n.toLocaleString(c.locale, { style: "currency", currency: c.code, maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+  } catch {
+    return `${c.symbol}${n.toLocaleString("en-US", { maximumFractionDigits: decimals })}`;
+  }
 }
 
 export function categorySpend(transactions: Transaction[], month?: number, year?: number) {
