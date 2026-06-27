@@ -198,6 +198,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try { window.localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
   }, [data, useApi]);
 
+  // Keep module-level currency in sync with settings so fmtCurrency() reflects user choice everywhere
+  useEffect(() => {
+    setActiveCurrency(data.settings.currency || "USD");
+  }, [data.settings.currency]);
+
   // Hydrate from API on login
   useEffect(() => {
     if (!useApi || !token || !user) return;
