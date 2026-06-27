@@ -83,5 +83,9 @@ CREATE TABLE IF NOT EXISTS settings (
   email_goal_alerts    TINYINT(1) NOT NULL DEFAULT 1,
   email_weekly_digest  TINYINT(1) NOT NULL DEFAULT 0,
   email_product_updates TINYINT(1) NOT NULL DEFAULT 0,
+  currency             VARCHAR(8) NOT NULL DEFAULT 'USD',
   CONSTRAINT fk_s_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- For installs upgrading from an older schema:
+-- ALTER TABLE settings ADD COLUMN currency VARCHAR(8) NOT NULL DEFAULT 'USD';
