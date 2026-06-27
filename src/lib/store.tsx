@@ -184,7 +184,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return seed();
     try {
       const raw = window.localStorage.getItem(KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw) as StoreData;
+        parsed.settings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD", ...(parsed.settings || {}) };
+        return parsed;
+      }
       // Only seed on the very first visit; once cleared, never re-seed.
       if (window.localStorage.getItem(SEEDED_KEY)) return emptyData();
       window.localStorage.setItem(SEEDED_KEY, "1");
