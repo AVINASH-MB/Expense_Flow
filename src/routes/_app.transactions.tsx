@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Download, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Download, FileText, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
 import { toast } from "sonner";
-import { CATEGORIES, fmtCurrency, useStore, type Transaction, type TxnType } from "@/lib/store";
+import { CATEGORIES, fmtCurrency, getActiveCurrency, useStore, type Transaction, type TxnType } from "@/lib/store";
+import { exportTransactionsCsv, exportTransactionsPdf } from "@/lib/exporters";
+import { findCurrency } from "@/lib/currencies";
 
 export const Route = createFileRoute("/_app/transactions")({
   head: () => ({ meta: [{ title: "Transactions — ExpenseFlow" }] }),
@@ -37,16 +39,17 @@ function TransactionsPage() {
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const exportCSV = () => {
-    const headers = ["Date", "Name", "Category", "Type", "Amount", "Note"];
-    const rows = filtered.map((t) => [t.date, t.name, t.category, t.type, t.amount.toFixed(2), t.note || ""]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} transactions`);
+    exportTransactionsCsv(filtered);
+    const cur = findCurrency(getActiveCurrency());
+    toast.success(`Exported ${filtered.length} transactions as ${cur.code} CSV`);
   };
+
+  const exportPDF = () => {
+    exportTransactionsPdf(filtered);
+    const cur = findCurrency(getActiveCurrency());
+    toast.success(`Exported ${filtered.length} transactions as ${cur.code} PDF`);
+  };
+
 
   const reset = () => { setQ(""); setCat("all"); setType("all"); setFrom(""); setTo(""); };
 
@@ -60,6 +63,9 @@ function TransactionsPage() {
         <div className="flex gap-2">
           <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-lg glass px-4 py-2.5 text-sm font-medium">
             <Download className="h-4 w-4" /> Export CSV
+          </button>
+          <button onClick={exportPDF} className="inline-flex items-center gap-2 rounded-lg glass px-4 py-2.5 text-sm font-medium">
+            <FileText className="h-4 w-4" /> Export PDF
           </button>
           <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 rounded-lg btn-primary px-4 py-2.5 text-sm font-semibold">
             <Plus className="h-4 w-4" /> New
