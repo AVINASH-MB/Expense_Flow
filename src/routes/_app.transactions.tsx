@@ -64,6 +64,9 @@ function TransactionsPage() {
           <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-lg glass px-4 py-2.5 text-sm font-medium">
             <Download className="h-4 w-4" /> Export CSV
           </button>
+          <button onClick={exportPDF} className="inline-flex items-center gap-2 rounded-lg glass px-4 py-2.5 text-sm font-medium">
+            <FileText className="h-4 w-4" /> Export PDF
+          </button>
           <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 rounded-lg btn-primary px-4 py-2.5 text-sm font-semibold">
             <Plus className="h-4 w-4" /> New
           </button>
