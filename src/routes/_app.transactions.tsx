@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Download, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Download, FileText, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
 import { toast } from "sonner";
-import { CATEGORIES, fmtCurrency, useStore, type Transaction, type TxnType } from "@/lib/store";
+import { CATEGORIES, fmtCurrency, getActiveCurrency, useStore, type Transaction, type TxnType } from "@/lib/store";
+import { exportTransactionsCsv, exportTransactionsPdf } from "@/lib/exporters";
+import { findCurrency } from "@/lib/currencies";
 
 export const Route = createFileRoute("/_app/transactions")({
   head: () => ({ meta: [{ title: "Transactions — ExpenseFlow" }] }),
