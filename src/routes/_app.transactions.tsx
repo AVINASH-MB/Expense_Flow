@@ -39,16 +39,17 @@ function TransactionsPage() {
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const exportCSV = () => {
-    const headers = ["Date", "Name", "Category", "Type", "Amount", "Note"];
-    const rows = filtered.map((t) => [t.date, t.name, t.category, t.type, t.amount.toFixed(2), t.note || ""]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} transactions`);
+    exportTransactionsCsv(filtered);
+    const cur = findCurrency(getActiveCurrency());
+    toast.success(`Exported ${filtered.length} transactions as ${cur.code} CSV`);
   };
+
+  const exportPDF = () => {
+    exportTransactionsPdf(filtered);
+    const cur = findCurrency(getActiveCurrency());
+    toast.success(`Exported ${filtered.length} transactions as ${cur.code} PDF`);
+  };
+
 
   const reset = () => { setQ(""); setCat("all"); setType("all"); setFrom(""); setTo(""); };
 
