@@ -182,20 +182,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const [data, setData] = useState<StoreData>(() => {
     if (typeof window === "undefined") return seed();
+    const fallbackCurrency = (() => {
+      try { return window.localStorage.getItem("expenseflow.currency") || undefined; } catch { return undefined; }
+    })();
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as StoreData;
         const defaults: NotifySettings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" };
         parsed.settings = { ...defaults, ...(parsed.settings || {}) };
+        if (fallbackCurrency) parsed.settings.currency = fallbackCurrency;
         return parsed;
       }
       // Only seed on the very first visit; once cleared, never re-seed.
-      if (window.localStorage.getItem(SEEDED_KEY)) return emptyData();
+      if (window.localStorage.getItem(SEEDED_KEY)) {
+        const e = emptyData();
+        if (fallbackCurrency) e.settings.currency = fallbackCurrency;
+        return e;
+      }
       window.localStorage.setItem(SEEDED_KEY, "1");
     } catch {}
-    return seed();
+    const s = seed();
+    if (fallbackCurrency) s.settings.currency = fallbackCurrency;
+    return s;
   });
+
 
   // Persist locally only when running in mock mode
   useEffect(() => {
@@ -203,10 +214,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try { window.localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
   }, [data, useApi]);
 
-  // Keep module-level currency in sync with settings so fmtCurrency() reflects user choice everywhere
-  useEffect(() => {
-    setActiveCurrency(data.settings.currency || "USD");
-  }, [data.settings.currency]);
+  // Keep module-level currency in sync with settings synchronously so fmtCurrency()
+  // reflects the user choice on the SAME render that settings change. A useEffect
+  // would run after children render and leave them formatting with the old currency.
+  setActiveCurrency(data.settings.currency || "USD");
+
 
   // Hydrate from API on login
   useEffect(() => {
@@ -358,9 +370,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (useApi) tryApi(() => NotificationsAPI.broadcast(n), "Broadcast notification");
     },
     updateSettings: (s) => {
-      setData((d) => ({ ...d, settings: { ...d.settings, ...s } }));
-      if (useApi) tryApi(() => SettingsAPI.update(s), "Update settings");
+      // Normalize + apply immediately so formatters see the new value on the next render.
+      const next = { ...s } as Partial<NotifySettings>;
+      if (typeof next.currency === "string") {
+        next.currency = next.currency.toUpperCase();
+        setActiveCurrency(next.currency);
+        // Fallback persistence so the choice survives a reload when the API is down.
+        try { window.localStorage.setItem("expenseflow.currency", next.currency); } catch {}
+      }
+      setData((d) => ({ ...d, settings: { ...d.settings, ...next } }));
+      if (useApi) tryApi(() => SettingsAPI.update(next), "Update settings");
     },
+
     updateUser: (id, u) => {
       setData((d) => ({ ...d, users: d.users.map((x) => x.id === id ? { ...x, ...u } : x) }));
       if (useApi) tryApi(() => AdminAPI.updateUser(id, u), "Update user");
