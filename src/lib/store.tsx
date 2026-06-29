@@ -359,9 +359,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (useApi) tryApi(() => NotificationsAPI.broadcast(n), "Broadcast notification");
     },
     updateSettings: (s) => {
-      setData((d) => ({ ...d, settings: { ...d.settings, ...s } }));
-      if (useApi) tryApi(() => SettingsAPI.update(s), "Update settings");
+      // Normalize + apply immediately so formatters see the new value on the next render.
+      const next = { ...s } as Partial<NotifySettings>;
+      if (typeof next.currency === "string") {
+        next.currency = next.currency.toUpperCase();
+        setActiveCurrency(next.currency);
+        // Fallback persistence so the choice survives a reload when the API is down.
+        try { window.localStorage.setItem("expenseflow.currency", next.currency); } catch {}
+      }
+      setData((d) => ({ ...d, settings: { ...d.settings, ...next } }));
+      if (useApi) tryApi(() => SettingsAPI.update(next), "Update settings");
     },
+
     updateUser: (id, u) => {
       setData((d) => ({ ...d, users: d.users.map((x) => x.id === id ? { ...x, ...u } : x) }));
       if (useApi) tryApi(() => AdminAPI.updateUser(id, u), "Update user");
