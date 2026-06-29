@@ -182,20 +182,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const [data, setData] = useState<StoreData>(() => {
     if (typeof window === "undefined") return seed();
+    const fallbackCurrency = (() => {
+      try { return window.localStorage.getItem("expenseflow.currency") || undefined; } catch { return undefined; }
+    })();
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as StoreData;
         const defaults: NotifySettings = { emailBudgetAlerts: true, emailGoalAlerts: true, emailWeeklyDigest: false, emailProductUpdates: false, currency: "USD" };
         parsed.settings = { ...defaults, ...(parsed.settings || {}) };
+        if (fallbackCurrency) parsed.settings.currency = fallbackCurrency;
         return parsed;
       }
       // Only seed on the very first visit; once cleared, never re-seed.
-      if (window.localStorage.getItem(SEEDED_KEY)) return emptyData();
+      if (window.localStorage.getItem(SEEDED_KEY)) {
+        const e = emptyData();
+        if (fallbackCurrency) e.settings.currency = fallbackCurrency;
+        return e;
+      }
       window.localStorage.setItem(SEEDED_KEY, "1");
     } catch {}
-    return seed();
+    const s = seed();
+    if (fallbackCurrency) s.settings.currency = fallbackCurrency;
+    return s;
   });
+
 
   // Persist locally only when running in mock mode
   useEffect(() => {
