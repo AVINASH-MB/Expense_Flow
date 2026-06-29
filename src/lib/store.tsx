@@ -203,10 +203,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try { window.localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
   }, [data, useApi]);
 
-  // Keep module-level currency in sync with settings so fmtCurrency() reflects user choice everywhere
-  useEffect(() => {
-    setActiveCurrency(data.settings.currency || "USD");
-  }, [data.settings.currency]);
+  // Keep module-level currency in sync with settings synchronously so fmtCurrency()
+  // reflects the user choice on the SAME render that settings change. A useEffect
+  // would run after children render and leave them formatting with the old currency.
+  setActiveCurrency(data.settings.currency || "USD");
+
 
   // Hydrate from API on login
   useEffect(() => {
