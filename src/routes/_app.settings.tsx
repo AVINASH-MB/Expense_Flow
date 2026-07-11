@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlertTriangle, Check, ChevronsUpDown, Search, ShieldAlert, X } from "lucide-react";
 import { useAuth } from "@/context/auth";
@@ -132,6 +133,23 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (code: s
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const selected = findCurrency(value);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setRect({ top: r.bottom + 8, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -146,6 +164,7 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (code: s
   return (
     <div className="relative">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-sm hover:bg-white/[0.06]"
@@ -158,10 +177,13 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (code: s
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && rect && createPortal(
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-lg border border-white/10 bg-[oklch(0.18_0.04_265)] shadow-2xl backdrop-blur-xl">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9999] overflow-hidden rounded-lg border border-white/10 bg-popover text-popover-foreground shadow-2xl backdrop-blur-xl"
+            style={{ top: rect.top, left: rect.left, width: rect.width }}
+          >
             <div className="flex items-center gap-2 border-b border-white/5 px-3 py-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input
@@ -196,7 +218,8 @@ function CurrencyPicker({ value, onChange }: { value: string; onChange: (code: s
               })}
             </ul>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
