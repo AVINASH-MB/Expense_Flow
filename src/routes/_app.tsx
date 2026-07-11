@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const { user, loading, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { notifications } = useStore();
