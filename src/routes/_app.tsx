@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { LayoutDashboard, ArrowLeftRight, Target, PiggyBank, BarChart3, Settings, LogOut, Wallet, Bell, Shield } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Target, PiggyBank, BarChart3, Settings, LogOut, Wallet, Bell, Shield, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { useStore } from "@/lib/store";
+import { useTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
