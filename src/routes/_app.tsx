@@ -98,6 +98,18 @@ function AppLayout() {
                 <p className="truncate text-sm text-muted-foreground">Welcome back, <span className="text-foreground font-medium">{user.name}</span>{user.role === "admin" && <span className="ml-2 rounded-full bg-brand-purple/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-brand-purple">Admin</span>}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
+                <button
+                  onClick={toggle}
+                  aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                  className="relative inline-flex h-9 w-16 items-center rounded-full border border-white/10 bg-white/[0.04] p-1 transition-colors hover:bg-white/[0.08]"
+                >
+                  <span
+                    className={`grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand-purple to-brand-blue text-white shadow-md transition-transform duration-300 ease-out ${theme === "dark" ? "translate-x-0" : "translate-x-7"}`}
+                  >
+                    <Sun className={`h-3.5 w-3.5 absolute transition-all duration-300 ${theme === "light" ? "rotate-0 opacity-100 scale-100" : "-rotate-90 opacity-0 scale-75"}`} />
+                    <Moon className={`h-3.5 w-3.5 absolute transition-all duration-300 ${theme === "dark" ? "rotate-0 opacity-100 scale-100" : "rotate-90 opacity-0 scale-75"}`} />
+                  </span>
+                </button>
                 <Link to="/notifications" className="relative grid h-9 w-9 place-items-center rounded-lg glass">
                   <Bell className="h-4 w-4" />
                   {unread > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-[16px] place-items-center rounded-full bg-brand-rose px-1 text-[10px] font-bold text-white">{unread}</span>}
