@@ -93,6 +93,48 @@
   --shadow-soft: 0 8px 30px -10px oklch(0.1 0.04 265 / 0.6);
 }
 
+/* Light theme overrides — activated by `.light` on <html> */
+.light {
+  --background: oklch(0.99 0.005 250);
+  --foreground: oklch(0.20 0.03 265);
+
+  --card: oklch(1 0 0 / 0.85);
+  --card-foreground: oklch(0.20 0.03 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.20 0.03 265);
+
+  --primary: oklch(0.55 0.22 295);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.01 265);
+  --secondary-foreground: oklch(0.20 0.03 265);
+  --muted: oklch(0.95 0.01 265);
+  --muted-foreground: oklch(0.42 0.03 260);
+  --accent: oklch(0.55 0.18 255);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.56 0.23 12);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.20 0.03 265 / 0.12);
+  --input: oklch(0.20 0.03 265 / 0.06);
+  --ring: oklch(0.55 0.22 295 / 0.5);
+
+  --brand-purple: oklch(0.55 0.22 295);
+  --brand-blue: oklch(0.55 0.18 255);
+  --brand-rose: oklch(0.56 0.23 12);
+  --success: oklch(0.60 0.17 160);
+
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.65 0.22 295 / 0.12), transparent 60%),
+                   radial-gradient(ellipse at bottom right, oklch(0.65 0.18 255 / 0.08), transparent 60%);
+
+  --shadow-glow: 0 10px 60px -10px oklch(0.55 0.22 295 / 0.35);
+  --shadow-soft: 0 8px 30px -10px oklch(0.20 0.03 265 / 0.15);
+}
+
+/* Smooth theme transition */
+html, body, .card-glass, .glass, .glass-strong, header, aside, section, button, input, textarea, select {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -103,10 +145,16 @@
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
   }
-  body {
+  .dark body {
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.65 0.22 295 / 0.18), transparent),
       radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.65 0.18 255 / 0.12), transparent);
+    background-attachment: fixed;
+  }
+  .light body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.65 0.22 295 / 0.10), transparent),
+      radial-gradient(ellipse 60% 50% at 90% 20%, oklch(0.65 0.18 255 / 0.08), transparent);
     background-attachment: fixed;
   }
 }
